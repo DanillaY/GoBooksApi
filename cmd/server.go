@@ -35,8 +35,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		author = strings.ToLower(author)
 		fmt.Println(author)
 	}
-	minPrice := context.DefaultQuery("minPrice", "100000")
-	maxPrice := context.DefaultQuery("maxPrice", "50")
+	minPrice := context.DefaultQuery("minPrice", "50")
+	maxPrice := context.DefaultQuery("maxPrice", "100000")
 
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil {
@@ -49,8 +49,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		Where("LOWER(category) LIKE ?", "%"+category+"%").
 		Where("LOWER(title) LIKE ?", "%"+title+"%").
 		Where("LOWER(author) LIKE ?", "%"+author+"%").
-		Where("old_price <= ?", minPrice).
-		Where("current_price >= ?", maxPrice).
+		Where("current_price >= ?", minPrice).
+		Where("current_price <= ?", maxPrice).
 		Limit(limitInt).
 		Find(&books).Error
 
