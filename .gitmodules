@@ -1,6 +1,3 @@
 [submodule "GoScrapper"]
 	path = GoScrapper
 	url = https://github.com/DanillaY/GoScrapper
-[submodule "7a21a3a"]
-	path = 7a21a3a
-	url = https://github.com/DanillaY/GoScrapper
