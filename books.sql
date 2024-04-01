@@ -1,11 +1,3 @@
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 15.3
--- Dumped by pg_dump version 15.3
-
--- Started on 2024-03-23 14:33:47
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -47,11 +39,6 @@ CREATE TABLE public.books (
 
 
 ALTER TABLE public.books OWNER TO postgres;
-
---
--- TOC entry 214 (class 1259 OID 48484)
--- Name: books_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
 
 CREATE SEQUENCE public.books_id_seq
     START WITH 1
