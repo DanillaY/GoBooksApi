@@ -28,7 +28,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		category = strings.ToLower(category)
 	}
 
-	limit := context.DefaultQuery("limit", "30") // you could send -1 if you want to get all records
+	pageNumber := context.DefaultQuery("pageNum", "1")
+	limit := context.DefaultQuery("limit", "30")
 	title := context.DefaultQuery("title", "%")
 	author := context.DefaultQuery("author", "%")
 	if author != "%" {
@@ -38,20 +39,22 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	minPrice := context.DefaultQuery("minPrice", "50")
 	maxPrice := context.DefaultQuery("maxPrice", "100000")
 
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil {
-		context.JSON(http.StatusBadRequest, err.Error())
+	limitInt, errLim := strconv.Atoi(limit)
+	pageNumberInt, errPageNum := strconv.Atoi(pageNumber)
+	if errLim != nil || errPageNum != nil {
+		context.JSON(http.StatusBadRequest, errLim.Error()+" "+errPageNum.Error())
 	}
 
 	books := &[]models.Book{}
 
-	err = d.Db.
+	err := d.Db.
 		Where("LOWER(category) LIKE ?", "%"+category+"%").
 		Where("LOWER(title) LIKE ?", "%"+title+"%").
 		Where("LOWER(author) LIKE ?", "%"+author+"%").
 		Where("current_price >= ?", minPrice).
 		Where("current_price <= ?", maxPrice).
-		Limit(limitInt).
+		Where("ID >= ?", pageNumberInt*limitInt-limitInt).
+		Where("ID <= ?", pageNumberInt*limitInt).
 		Find(&books).Error
 
 	if err != nil {
