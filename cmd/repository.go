@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 
+	"github.com/DanillaY/GoScrapper/cmd/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -20,6 +21,17 @@ type Config struct {
 type Repository struct {
 	Db     *gorm.DB
 	Config *Config
+}
+
+type Pagination struct {
+	Total       int
+	PerPage     int
+	CurrentPage int
+	LastPage    int
+}
+type ApiAnswer struct {
+	Pagination *Pagination    `json:"pagination"`
+	Data       *[]models.Book `json:"data"`
 }
 
 func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {

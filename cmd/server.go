@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -71,13 +72,30 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		Where("LOWER(author) LIKE ?", "%"+author+"%").
 		Where("current_price >= ?", minPrice).
 		Where("current_price <= ?", maxPrice).
-		Where("ID >= ?", pageNumberInt*limitInt-limitInt).
-		Where("ID <= ?", pageNumberInt*limitInt).
 		Find(&books).Error
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
+	}
+	total := len(*books)
+	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
+
+	err = d.Db.
+		Where("ID >= ?", pageNumberInt*limitInt-limitInt).
+		Where("ID <= ?", pageNumberInt*limitInt).Find(&books).Error
+
+	if err != nil {
+		context.JSON(http.StatusBadRequest, err.Error())
 	} else {
-		context.JSON(http.StatusOK, &books)
+
+		pagination := &Pagination{
+			Total:       total,
+			PerPage:     limitInt,
+			CurrentPage: pageNumberInt,
+			LastPage:    int(lastpage),
+		}
+		result := ApiAnswer{Data: books, Pagination: pagination}
+
+		context.JSON(http.StatusOK, &result)
 	}
 }
