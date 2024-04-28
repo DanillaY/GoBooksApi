@@ -14,11 +14,29 @@ func (d *Repository) InitAPIRoutes() {
 
 	booksApi := gin.New()
 	booksApi.Use(gin.Logger())
+	booksApi.Use(CORSMiddleware())
 
 	booksApi.SetTrustedProxies([]string{"localhost"})
 
 	booksApi.GET("/getBooks", d.GetBooks)
 	booksApi.Run(":" + d.Config.API_PORT)
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Methods", "POST,HEAD,PATCH, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(200)
+			return
+		}
+
+		c.Next()
+	}
 }
 
 func (d *Repository) GetBooks(context *gin.Context) {

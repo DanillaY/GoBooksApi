@@ -23,8 +23,8 @@ services:
     - goapi
 
   goscrapper:
-    build: ./goscrapper
-    command: go run ./main.go
+    build: ./
+    command: go run ./GoScrapper/main.go
     env_file:
       - "dbDocker.env"
     depends_on:
