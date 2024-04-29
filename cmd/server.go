@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -20,24 +19,8 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.SetTrustedProxies([]string{"localhost"})
 
 	booksApi.GET("/getBooks", d.GetBooks)
+	booksApi.GET("/getBooksById", d.GetBookByID)
 	booksApi.Run(":" + d.Config.API_PORT)
-}
-
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "POST,HEAD,PATCH, OPTIONS, GET, PUT")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(200)
-			return
-		}
-
-		c.Next()
-	}
 }
 
 func (d *Repository) GetBooks(context *gin.Context) {
@@ -51,10 +34,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	limit := context.DefaultQuery("limit", "30")
 	title := context.DefaultQuery("title", "%")
 	author := context.DefaultQuery("author", "%")
-	if author != "%" {
-		author = strings.ToLower(author)
-		fmt.Println(author)
-	}
+
 	minPrice := context.DefaultQuery("minPrice", "50")
 	maxPrice := context.DefaultQuery("maxPrice", "100000")
 
@@ -66,23 +46,18 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	err := d.Db.
-		Where("LOWER(category) LIKE ?", "%"+category+"%").
-		Where("LOWER(title) LIKE ?", "%"+title+"%").
-		Where("LOWER(author) LIKE ?", "%"+author+"%").
-		Where("current_price >= ?", minPrice).
-		Where("current_price <= ?", maxPrice).
+	err := d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, category)).
 		Find(&books).Error
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
 	}
+
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	err = d.Db.
-		Where("ID >= ?", pageNumberInt*limitInt-limitInt).
-		Where("ID <= ?", pageNumberInt*limitInt).Find(&books).Error
+	err = d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, category)).
+		Order("id").Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books).Error
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
@@ -90,12 +65,25 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 		pagination := &Pagination{
 			Total:       total,
-			PerPage:     limitInt,
+			PerPage:     len(*books),
 			CurrentPage: pageNumberInt,
 			LastPage:    int(lastpage),
 		}
+
 		result := ApiAnswer{Data: books, Pagination: pagination}
 
 		context.JSON(http.StatusOK, &result)
+	}
+}
+
+func (d *Repository) GetBookByID(context *gin.Context) {
+	bookId := context.DefaultQuery("id", "1")
+	book := &models.Book{}
+	err := d.Db.First(&book, bookId).Error
+
+	if err != nil {
+		context.JSON(http.StatusBadRequest, err.Error())
+	} else {
+		context.JSON(http.StatusOK, &book)
 	}
 }

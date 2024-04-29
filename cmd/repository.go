@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -47,4 +49,31 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 		return db, err
 	}
 	return db, nil
+}
+
+func FilterBooks(title string, author string, maxPrice string, minPrice string, category string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Where("LOWER(category) LIKE ?", "%"+category+"%").
+			Where("LOWER(title) LIKE ?", "%"+strings.ToLower(title)+"%").
+			Where("LOWER(author) LIKE ?", "%"+strings.ToLower(author)+"%").
+			Where("current_price >= ?", minPrice).
+			Where("current_price <= ?", maxPrice)
+	}
+}
+
+func CORSMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Header("Access-Control-Allow-Methods", "HEAD, OPTIONS, GET, PUT")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(200)
+			return
+		}
+
+		c.Next()
+	}
 }
