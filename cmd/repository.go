@@ -53,7 +53,7 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 
 func FilterBooks(title string, author string, maxPrice string, minPrice string, category string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		return db.Where("LOWER(category) LIKE ?", "%"+category+"%").
+		return db.Where("LOWER(category) SIMILAR TO ?", category).
 			Where("LOWER(title) LIKE ?", "%"+strings.ToLower(title)+"%").
 			Where("LOWER(author) LIKE ?", "%"+strings.ToLower(author)+"%").
 			Where("current_price >= ?", minPrice).

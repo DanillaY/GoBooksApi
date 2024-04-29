@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -20,14 +21,25 @@ func (d *Repository) InitAPIRoutes() {
 
 	booksApi.GET("/getBooks", d.GetBooks)
 	booksApi.GET("/getBooksById", d.GetBookByID)
+	booksApi.GET("/getProperties", d.GetProperties)
 	booksApi.Run(":" + d.Config.API_PORT)
 }
 
 func (d *Repository) GetBooks(context *gin.Context) {
 
-	category := context.DefaultQuery("category", "%")
-	if category != "%" {
-		category = strings.ToLower(category)
+	categoryQuery := strings.ToLower(context.DefaultQuery("category", "%"))
+	categoryRawSql := "%" + categoryQuery + "%"
+
+	if categoryQuery != "%" && strings.Contains(categoryQuery, ",") {
+		categ := strings.Split(categoryQuery, ",")
+		for i := 0; i < len(categ); i++ {
+			if i == len(categ)-1 {
+				categoryRawSql += "%" + categ[i] + "%"
+			} else {
+				categoryRawSql += "%" + categ[i] + "%|"
+			}
+		}
+		fmt.Println(categoryRawSql)
 	}
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
@@ -46,7 +58,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	err := d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, category)).
+	err := d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, categoryRawSql)).
 		Find(&books).Error
 
 	if err != nil {
@@ -56,7 +68,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	err = d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, category)).
+	err = d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, categoryRawSql)).
 		Order("id").Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books).Error
 
 	if err != nil {
@@ -86,4 +98,17 @@ func (d *Repository) GetBookByID(context *gin.Context) {
 	} else {
 		context.JSON(http.StatusOK, &book)
 	}
+}
+
+func (d *Repository) GetProperties(context *gin.Context) {
+	property := strings.ToLower(context.DefaultQuery("property", "author"))
+	var result []string
+	err := d.Db.Model(&models.Book{}).Distinct(property).Pluck(property, &result).Error
+
+	if err != nil {
+		context.JSON(http.StatusBadRequest, err.Error())
+	} else {
+		context.JSON(http.StatusOK, result)
+	}
+
 }
