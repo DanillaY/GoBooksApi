@@ -1,8 +1,10 @@
 package server
 
 import (
+	"cmp"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -32,6 +34,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
 	search := context.DefaultQuery("search", "%")
+	sort := context.DefaultQuery("priceSort", "")
 	//title := context.DefaultQuery("title", "%")
 	//author := context.DefaultQuery("author", "%")
 
@@ -48,7 +51,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	}
@@ -56,11 +59,22 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
-		Order("id").Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books); db.Error != nil {
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).Order("id").
+		Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	} else {
 
+		if sort == "ascending" {
+			slices.SortStableFunc(*books, func(a, b models.Book) int {
+				return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
+			})
+		}
+		if sort == "descending" {
+			slices.SortStableFunc(*books, func(a, b models.Book) int {
+				return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
+			})
+			slices.Reverse(*books)
+		}
 		pagination := &Pagination{
 			Total:       total,
 			PerPage:     len(*books),
@@ -69,7 +83,6 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		}
 
 		result := ApiAnswer{Data: books, Pagination: pagination}
-
 		context.JSON(http.StatusOK, &result)
 	}
 }
