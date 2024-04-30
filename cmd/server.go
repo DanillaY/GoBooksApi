@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 	"strconv"
@@ -27,25 +26,16 @@ func (d *Repository) InitAPIRoutes() {
 
 func (d *Repository) GetBooks(context *gin.Context) {
 
-	categoryQuery := strings.ToLower(context.DefaultQuery("category", "%"))
-	categoryRawSql := "%" + categoryQuery + "%"
-
-	if categoryQuery != "%" && strings.Contains(categoryQuery, ",") {
-		categ := strings.Split(categoryQuery, ",")
-		for i := 0; i < len(categ); i++ {
-			if i == len(categ)-1 {
-				categoryRawSql += "%" + categ[i] + "%"
-			} else {
-				categoryRawSql += "%" + categ[i] + "%|"
-			}
-		}
-		fmt.Println(categoryRawSql)
-	}
+	category := strings.ToLower(context.DefaultQuery("category", "%"))
+	categoryRawSql := AddRegexToQuery(category, ",", strings.Contains(category, ","))
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
-	title := context.DefaultQuery("title", "%")
-	author := context.DefaultQuery("author", "%")
+	search := context.DefaultQuery("search", "%")
+	//title := context.DefaultQuery("title", "%")
+	//author := context.DefaultQuery("author", "%")
+
+	search = AddRegexToQuery(search, " ", search != "%")
 
 	minPrice := context.DefaultQuery("minPrice", "50")
 	maxPrice := context.DefaultQuery("maxPrice", "100000")
@@ -58,21 +48,17 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	err := d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, categoryRawSql)).
-		Find(&books).Error
-
-	if err != nil {
-		context.JSON(http.StatusBadRequest, err.Error())
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
+		Find(&books); db.Error != nil {
+		context.JSON(http.StatusBadRequest, db.Error)
 	}
 
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	err = d.Db.Scopes(FilterBooks(title, author, maxPrice, minPrice, categoryRawSql)).
-		Order("id").Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books).Error
-
-	if err != nil {
-		context.JSON(http.StatusBadRequest, err.Error())
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
+		Order("id").Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books); db.Error != nil {
+		context.JSON(http.StatusBadRequest, db.Error)
 	} else {
 
 		pagination := &Pagination{

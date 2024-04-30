@@ -51,13 +51,14 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 	return db, nil
 }
 
-func FilterBooks(title string, author string, maxPrice string, minPrice string, category string) func(db *gorm.DB) *gorm.DB {
+func FilterBooks(maxPrice string, minPrice string, category string, search string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		return db.Where("LOWER(category) SIMILAR TO ?", category).
-			Where("LOWER(title) LIKE ?", "%"+strings.ToLower(title)+"%").
-			Where("LOWER(author) LIKE ?", "%"+strings.ToLower(author)+"%").
+
+		return db.
 			Where("current_price >= ?", minPrice).
-			Where("current_price <= ?", maxPrice)
+			Where("current_price <= ?", maxPrice).
+			Where("LOWER(category) SIMILAR TO ?", category).
+			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ?", strings.ToLower(search), strings.ToLower(search))
 	}
 }
 
@@ -76,4 +77,23 @@ func CORSMiddleware() gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func AddRegexToQuery(query string, separator string, entryCheck bool) string {
+	result := ""
+	if entryCheck {
+		queryWithReg := strings.Split(query, separator)
+		for i := 0; i < len(queryWithReg); i++ {
+			if i == len(queryWithReg)-1 {
+				result += "%" + queryWithReg[i] + "%"
+			} else {
+				result += "%" + queryWithReg[i] + "%|"
+			}
+		}
+
+	} else {
+		result = "%" + query + "%"
+	}
+	fmt.Println(result)
+	return result
 }
