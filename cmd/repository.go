@@ -61,25 +61,6 @@ func FilterBooks(maxPrice string, minPrice string, category string, search strin
 	}
 }
 
-/*
-func CORSMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Credentials", "true")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Header("Access-Control-Allow-Methods", "HEAD, OPTIONS, GET, PUT")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(200)
-			return
-		}
-
-		c.Next()
-	}
-}
-*/
-
 func AddRegexToQuery(query string, separator string, entryCheck bool) string {
 	result := ""
 	if entryCheck {
