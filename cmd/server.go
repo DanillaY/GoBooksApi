@@ -7,8 +7,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +18,13 @@ func (d *Repository) InitAPIRoutes() {
 
 	booksApi := gin.New()
 	booksApi.Use(gin.Logger())
-	booksApi.Use(CORSMiddleware())
+	booksApi.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "Cache-Control", "X-Requested-With"},
+		AllowCredentials: true,
+		MaxAge:           24 * time.Hour,
+	}))
 
 	booksApi.SetTrustedProxies([]string{"localhost"})
 

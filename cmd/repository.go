@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
-	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -62,6 +61,7 @@ func FilterBooks(maxPrice string, minPrice string, category string, search strin
 	}
 }
 
+/*
 func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -78,6 +78,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+*/
 
 func AddRegexToQuery(query string, separator string, entryCheck bool) string {
 	result := ""
