@@ -52,13 +52,14 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 	return db, nil
 }
 
-func FilterBooks(maxPrice string, minPrice string, category string, search string) func(db *gorm.DB) *gorm.DB {
+func FilterBooks(maxPrice string, minPrice string, category string, search string, author string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		return db.
 			Where("current_price >= ?", minPrice).
 			Where("current_price <= ?", maxPrice).
 			Where("LOWER(category) SIMILAR TO ?", category).
-			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ?", strings.ToLower(search), strings.ToLower(search))
+			Where("LOWER(author) SIMILAR TO ?", strings.ToLower(author)).
+			Where("LOWER(title) SIMILAR TO ?", strings.ToLower(search))
 	}
 }
 

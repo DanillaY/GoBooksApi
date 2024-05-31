@@ -37,6 +37,9 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	category := strings.ToLower(context.DefaultQuery("category", "%"))
 	categoryRawSql := AddRegexToQuery(category, ",", strings.Contains(category, ","))
 
+	author := strings.ToLower(context.DefaultQuery("author", "%"))
+	authorRawSql := AddRegexToQuery(author, ",", strings.Contains(author, ","))
+
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
 	search := context.DefaultQuery("search", "%")
@@ -55,7 +58,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).Order("id").
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	}
@@ -63,7 +66,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql)).
 		Order("id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
