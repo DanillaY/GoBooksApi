@@ -1,7 +1,9 @@
 package server
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
@@ -52,7 +54,6 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 
 func FilterBooks(maxPrice string, minPrice string, category string, search string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-
 		return db.
 			Where("current_price >= ?", minPrice).
 			Where("current_price <= ?", maxPrice).
@@ -78,4 +79,18 @@ func AddRegexToQuery(query string, separator string, entryCheck bool) string {
 	}
 	fmt.Println(result)
 	return result
+}
+
+func SortByCurrentPrice(sort string, books *[]models.Book) {
+	if sort == "ascending" {
+		slices.SortStableFunc(*books, func(a, b models.Book) int {
+			return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
+		})
+	}
+	if sort == "descending" {
+		slices.SortStableFunc(*books, func(a, b models.Book) int {
+			return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
+		})
+		slices.Reverse(*books)
+	}
 }

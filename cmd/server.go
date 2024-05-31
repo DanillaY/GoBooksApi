@@ -1,10 +1,8 @@
 package server
 
 import (
-	"cmp"
 	"math"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -43,8 +41,6 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	limit := context.DefaultQuery("limit", "30")
 	search := context.DefaultQuery("search", "%")
 	sort := context.DefaultQuery("priceSort", "")
-	//title := context.DefaultQuery("title", "%")
-	//author := context.DefaultQuery("author", "%")
 
 	search = AddRegexToQuery(search, " ", search != "%")
 
@@ -67,22 +63,15 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).Order("id").
-		Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books); db.Error != nil {
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search)).
+		Order("id").
+		Offset((pageNumberInt - 1) * limitInt).
+		Limit(limitInt).
+		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	} else {
 
-		if sort == "ascending" {
-			slices.SortStableFunc(*books, func(a, b models.Book) int {
-				return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
-			})
-		}
-		if sort == "descending" {
-			slices.SortStableFunc(*books, func(a, b models.Book) int {
-				return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
-			})
-			slices.Reverse(*books)
-		}
+		SortByCurrentPrice(sort, books)
 		pagination := &Pagination{
 			Total:       total,
 			PerPage:     len(*books),
