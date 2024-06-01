@@ -29,6 +29,7 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.GET("/getBooks", d.GetBooks)
 	booksApi.GET("/getBooksById", d.GetBookByID)
 	booksApi.GET("/getProperties", d.GetProperties)
+	booksApi.GET("/getMinMaxPrice", d.GetMinMaxPrice)
 	booksApi.Run(":" + d.Config.API_PORT)
 }
 
@@ -41,6 +42,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	authorRawSql := AddRegexToQuery(author, ",", strings.Contains(author, ","))
 
 	vendor := strings.ToLower(context.DefaultQuery("vendor", "%"))
+	yearPublished := strings.ToLower(context.DefaultQuery("year", "%"))
+
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
 	search := context.DefaultQuery("search", "%")
@@ -59,7 +62,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor)).Order("id").
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor, yearPublished)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	}
@@ -67,7 +70,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor)).
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor, yearPublished)).
 		Order("id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
@@ -97,6 +100,23 @@ func (d *Repository) GetBookByID(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, err.Error())
 	} else {
 		context.JSON(http.StatusOK, &book)
+	}
+}
+
+func (d *Repository) GetMinMaxPrice(context *gin.Context) {
+	min := 0
+	max := 0
+	errMin := d.Db.Table("books").Select("MIN(current_price)").Find(&min).Error
+	errMax := d.Db.Table("books").Select("MAX(current_price)").Find(&max).Error
+
+	mapResult := make(map[string]int)
+	mapResult["minPrice"] = min
+	mapResult["maxPrice"] = max
+
+	if errMin != nil || errMax != nil {
+		context.JSON(http.StatusBadRequest, errMin)
+	} else {
+		context.JSON(http.StatusOK, mapResult)
 	}
 }
 
