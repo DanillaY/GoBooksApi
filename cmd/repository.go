@@ -52,12 +52,19 @@ func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
 	return db, nil
 }
 
-func FilterBooks(maxPrice string, minPrice string, category string, search string, author string) func(db *gorm.DB) *gorm.DB {
+func FilterBooks(
+	maxPrice string,
+	minPrice string,
+	category string,
+	search string,
+	author string,
+	vendor string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		return db.
 			Where("current_price >= ?", minPrice).
 			Where("current_price <= ?", maxPrice).
 			Where("LOWER(category) SIMILAR TO ?", category).
+			Where("LOWER(vendor) SIMILAR TO ?", "%"+vendor+"%").
 			Where("LOWER(author) SIMILAR TO ?", strings.ToLower(author)).
 			Where("LOWER(title) SIMILAR TO ?", strings.ToLower(search))
 	}
@@ -78,7 +85,6 @@ func AddRegexToQuery(query string, separator string, entryCheck bool) string {
 	} else {
 		result = "%" + query + "%"
 	}
-	fmt.Println(result)
 	return result
 }
 
