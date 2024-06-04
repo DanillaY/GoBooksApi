@@ -131,4 +131,6 @@ GoBooksApi имеет следующие эндпоинты:
 
 Для удаления подписки пользователя из базы эндпоинт /deleteBookSubscriber принимает индентичные параметры как /addNewBookSubscriber, а именно bookId и userEmail
 
+Пример запроса с применением различных query параметров: <http://localhost:8089/deleteBookSubscriber?bookId=69&userEmail=test@gmail.com>
+
 Также query параметры в GoBooksApi не является регистрозависимыми, это означает, что ответ сервера при запросе <http://172.21.80.1:8089/getBooks?author=Гоголь> не будет отличаться от ответа запроса <http://172.21.80.1:8089/getBooks?author=гОгоЛь>
