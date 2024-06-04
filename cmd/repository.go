@@ -67,7 +67,7 @@ func FilterBooks(
 			Where("LOWER(category) SIMILAR TO ?", category).
 			Where("LOWER(vendor) SIMILAR TO ?", "%"+vendor+"%").
 			Where("LOWER(author) SIMILAR TO ?", strings.ToLower(author)).
-			Where("LOWER(title) SIMILAR TO ?", strings.ToLower(search)).
+			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ? OR LOWER(category) SIMILAR TO ?", search, search, search).
 			Where("LOWER(year_publish) SIMILAR TO ?", "%"+yearPublished+"%")
 	}
 }

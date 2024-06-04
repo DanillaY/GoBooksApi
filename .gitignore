@@ -1,3 +1,4 @@
 db.env
 postgres-data/
 start.sh
+dbDocker.env

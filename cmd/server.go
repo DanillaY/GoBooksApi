@@ -3,6 +3,7 @@ package server
 import (
 	"math"
 	"net/http"
+	"net/mail"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.GET("/getBooksById", d.GetBookByID)
 	booksApi.GET("/getProperties", d.GetProperties)
 	booksApi.GET("/getMinMaxPrice", d.GetMinMaxPrice)
+	booksApi.DELETE("/deleteBookSubscriber", d.DeleteBookSubscriber)
+	booksApi.POST("/addNewBookSubscriber", d.AddNewBookSubscriber)
 	booksApi.Run(":" + d.Config.API_PORT)
 }
 
@@ -62,7 +65,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor, yearPublished)).Order("id").
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, strings.ToLower(search), authorRawSql, vendor, yearPublished)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	}
@@ -70,7 +73,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor, yearPublished)).
+	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, strings.ToLower(search), authorRawSql, vendor, yearPublished)).
 		Order("id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
@@ -129,6 +132,51 @@ func (d *Repository) GetProperties(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, err.Error())
 	} else {
 		context.JSON(http.StatusOK, result)
+	}
+
+}
+
+func (d *Repository) DeleteBookSubscriber(context *gin.Context) {
+	bookId := context.DefaultQuery("bookId", "1")
+	email := context.DefaultQuery("userEmail", "@")
+
+	book := models.Book{}
+	user := models.User{}
+	errBook := d.Db.Find(&book, "ID = ?", bookId).Error
+	errUser := d.Db.Find(&user, "email = ?", email).Error
+
+	if errBook != nil || errUser != nil {
+		context.JSON(http.StatusBadRequest, "Error while getting values")
+
+	} else if (book.ID == 0 || user.Email == "") || d.Db.Model(&book).Association("User").Count() == 0 {
+		context.JSON(http.StatusBadRequest, "No such user or book")
+
+	} else if book.Vendor == "Book24" || book.Vendor == "Читай город" || book.Vendor == "Лабиринт" {
+		d.Db.Model(&book).Association("User").Delete(&user)
+		context.JSON(http.StatusOK, "User was successfully unsubscribed")
+
+	} else {
+		context.JSON(http.StatusMethodNotAllowed, "Subscribing/Unsubscribing function for this vendor is prohibited")
+	}
+}
+
+func (d *Repository) AddNewBookSubscriber(context *gin.Context) {
+	bookId := context.DefaultQuery("bookId", "0")
+	email, errMail := mail.ParseAddress(context.DefaultQuery("userEmail", "@"))
+
+	book := models.Book{}
+	user := models.User{Email: email.Address}
+
+	errBook := d.Db.Find(&book, "ID = ?", bookId).Error
+	errUser := d.Db.Where(models.User{Email: email.Address}).FirstOrCreate(&user).Error
+
+	if errBook != nil || bookId == "0" || errMail != nil {
+		context.JSON(http.StatusBadRequest, "Error while getting values")
+	} else if errUser != nil {
+		context.JSON(http.StatusInternalServerError, "Could not create user")
+	} else {
+		d.Db.Model(&book).Association("User").Append(&user)
+		context.JSON(http.StatusOK, "User subscription was successfully complete")
 	}
 
 }
