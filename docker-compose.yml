@@ -10,21 +10,21 @@ services:
     restart: always
     image: postgres:latest
     volumes:
-    - books_db:/var/lib/postgresql/data
+      - books_db:/var/lib/postgresql/data
     env_file:
-    - "dbDocker.env"
+      - "dbDocker.env"
     ports:
-    - "5430:5432"
+      - "5430:5432"
 
   nginx:
     image: nginx:latest
     ports:
-    - "3409:80"
+      - "3409:80"
     volumes:
-    - ./nginx.conf:/etc/nginx/conf.d/nginx.conf
+      - ./nginx.conf:/etc/nginx/conf.d/nginx.conf
     depends_on:
-    - postgres
-    - goapi
+      - postgres
+      - goapi
 
   goscrapper:
     build: ./

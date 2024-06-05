@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
+	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -21,7 +22,7 @@ type Config struct {
 
 type Repository struct {
 	Db     *gorm.DB
-	Config *Config
+	Config *repository.Config
 }
 
 type Pagination struct {
@@ -35,7 +36,7 @@ type ApiAnswer struct {
 	Data       *[]models.Book `json:"data"`
 }
 
-func NewPostgresConnection(c *Config) (db *gorm.DB, e error) {
+func NewPostgresConnection(c *repository.Config) (db *gorm.DB, e error) {
 	db, err := gorm.Open(postgres.Open(
 		"host="+c.HOST+
 			" port="+c.DB_PORT+
