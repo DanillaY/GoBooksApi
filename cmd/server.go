@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"net/mail"
@@ -31,6 +32,7 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.GET("/getBooksById", d.GetBookByID)
 	booksApi.GET("/getProperties", d.GetProperties)
 	booksApi.GET("/getMinMaxPrice", d.GetMinMaxPrice)
+	booksApi.GET("/getBooksByEmail", d.GetBooksByEmail)
 	booksApi.DELETE("/deleteBookSubscriber", d.DeleteBookSubscriber)
 	booksApi.POST("/addNewBookSubscriber", d.AddNewBookSubscriber)
 	booksApi.Run(":" + d.Config.API_PORT)
@@ -45,12 +47,17 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	authorRawSql := AddRegexToQuery(author, ",", strings.Contains(author, ","))
 
 	vendor := strings.ToLower(context.DefaultQuery("vendor", "%"))
-	yearPublished := strings.ToLower(context.DefaultQuery("year", "%"))
+	yearPublished := context.DefaultQuery("year", "0")
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
 	search := context.DefaultQuery("search", "%")
-	sort := context.DefaultQuery("priceSort", "")
+	sort := context.DefaultQuery("sortOrder", "")
+	sortField := context.DefaultQuery("sortField", "")
+	if sortField != "" {
+		sortField += " " + sort + ","
+	}
+	fmt.Println(sortField)
 
 	search = AddRegexToQuery(search, " ", search != "%")
 
@@ -74,14 +81,12 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
 	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, strings.ToLower(search), authorRawSql, vendor, yearPublished)).
-		Order("id").
+		Order(sortField + "id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	} else {
-
-		SortByCurrentPrice(sort, books)
 		pagination := &Pagination{
 			Total:       total,
 			PerPage:     len(*books),
@@ -136,17 +141,33 @@ func (d *Repository) GetProperties(context *gin.Context) {
 
 }
 
+func (d *Repository) GetBooksByEmail(context *gin.Context) {
+	email, errMail := mail.ParseAddress(context.DefaultQuery("userEmail", "@"))
+	user := models.User{}
+	books := []models.Book{}
+	errUser := d.Db.Model(models.User{}).Find(&user, "email = ?", email.Address).Error
+	d.Db.Model(&user).Association("Book").Find(&books)
+
+	if errUser != nil {
+		context.JSON(http.StatusInternalServerError, "No such user")
+	} else if errMail != nil {
+		context.JSON(http.StatusInternalServerError, "Email is not valid")
+	} else {
+		context.JSON(http.StatusOK, gin.H{"books": &books})
+	}
+}
+
 func (d *Repository) DeleteBookSubscriber(context *gin.Context) {
 	bookId := context.DefaultQuery("bookId", "1")
-	email := context.DefaultQuery("userEmail", "@")
+	email, errMail := mail.ParseAddress(context.DefaultQuery("userEmail", "@"))
 
 	book := models.Book{}
 	user := models.User{}
 	errBook := d.Db.Find(&book, "ID = ?", bookId).Error
 	errUser := d.Db.Find(&user, "email = ?", email).Error
 
-	if errBook != nil || errUser != nil {
-		context.JSON(http.StatusBadRequest, "Error while getting values")
+	if errBook != nil || errUser != nil || errMail != nil {
+		context.JSON(http.StatusBadRequest, "Server error")
 
 	} else if (book.ID == 0 || user.Email == "") || d.Db.Model(&book).Association("User").Count() == 0 {
 		context.JSON(http.StatusBadRequest, "No such user or book")
@@ -174,9 +195,11 @@ func (d *Repository) AddNewBookSubscriber(context *gin.Context) {
 		context.JSON(http.StatusBadRequest, "Error while getting values")
 	} else if errUser != nil {
 		context.JSON(http.StatusInternalServerError, "Could not create user")
-	} else {
+	} else if book.Vendor == "Book24" || book.Vendor == "Читай город" || book.Vendor == "Лабиринт" {
 		d.Db.Model(&book).Association("User").Append(&user)
 		context.JSON(http.StatusOK, "User subscription was successfully complete")
+	} else {
+		context.JSON(http.StatusMethodNotAllowed, "Subscribing/Unsubscribing function for this vendor is prohibited")
 	}
 
 }

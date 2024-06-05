@@ -1,9 +1,7 @@
 package server
 
 import (
-	"cmp"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/models"
@@ -68,7 +66,7 @@ func FilterBooks(
 			Where("LOWER(vendor) SIMILAR TO ?", "%"+vendor+"%").
 			Where("LOWER(author) SIMILAR TO ?", strings.ToLower(author)).
 			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ? OR LOWER(category) SIMILAR TO ?", search, search, search).
-			Where("LOWER(year_publish) SIMILAR TO ?", "%"+yearPublished+"%")
+			Where("year_publish >= ?", yearPublished)
 	}
 }
 
@@ -88,18 +86,4 @@ func AddRegexToQuery(query string, separator string, entryCheck bool) string {
 		result = "%" + query + "%"
 	}
 	return result
-}
-
-func SortByCurrentPrice(sort string, books *[]models.Book) {
-	if sort == "ascending" {
-		slices.SortStableFunc(*books, func(a, b models.Book) int {
-			return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
-		})
-	}
-	if sort == "descending" {
-		slices.SortStableFunc(*books, func(a, b models.Book) int {
-			return cmp.Compare(a.CurrentPrice, b.CurrentPrice)
-		})
-		slices.Reverse(*books)
-	}
 }
