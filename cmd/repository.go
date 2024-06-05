@@ -57,15 +57,17 @@ func FilterBooks(
 	search string,
 	author string,
 	vendor string,
-	yearPublished string) func(db *gorm.DB) *gorm.DB {
+	yearPublished string,
+	stockText string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		return db.
 			Where("current_price >= ?", minPrice).
 			Where("current_price <= ?", maxPrice).
 			Where("LOWER(category) SIMILAR TO ?", category).
 			Where("LOWER(vendor) SIMILAR TO ?", "%"+vendor+"%").
-			Where("LOWER(author) SIMILAR TO ?", strings.ToLower(author)).
+			Where("LOWER(author) SIMILAR TO ?", author).
 			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ? OR LOWER(category) SIMILAR TO ?", search, search, search).
+			Where("LOWER(in_stock_text) SIMILAR TO ?", "%"+stockText+"%").
 			Where("year_publish >= ?", yearPublished)
 	}
 }
