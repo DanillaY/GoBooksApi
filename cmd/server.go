@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"net/mail"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	authorRawSql := strings.ToLower(AddRegexToQuery(author, ",", strings.Contains(author, ",")))
 
 	vendor := strings.ToLower(context.DefaultQuery("vendor", "%"))
-	yearPublished := context.DefaultQuery("year", "0")
+	yearPublished := context.DefaultQuery("year", "%")
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
@@ -74,12 +75,9 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	books := &[]models.Book{}
 
 	if db := d.Db.Scopes(FilterBooks(maxPrice,
-		minPrice,
-		categoryRawSql,
-		search,
-		authorRawSql,
-		vendor,
-		yearPublished, stockText)).Order("id").
+		minPrice, categoryRawSql,
+		search, authorRawSql,
+		vendor, yearPublished, stockText)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	}
@@ -87,8 +85,10 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice, minPrice, categoryRawSql, search, authorRawSql, vendor, yearPublished, stockText)).
-		Order(sortField + "id").
+	if db := d.Db.Scopes(FilterBooks(maxPrice,
+		minPrice, categoryRawSql,
+		search, authorRawSql,
+		vendor, yearPublished, stockText)).Order(sortField + "id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
 		Find(&books); db.Error != nil {
@@ -138,11 +138,16 @@ func (d *Repository) GetMinMaxPrice(context *gin.Context) {
 func (d *Repository) GetProperties(context *gin.Context) {
 	property := strings.ToLower(context.DefaultQuery("property", "author"))
 	var result []string
-	err := d.Db.Model(&models.Book{}).Distinct(property).Pluck(property, &result).Error
+	err := d.Db.Model(&models.Book{}).Distinct(property).Order(property+" DESC").Pluck(property, &result).Error
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
 	} else {
+		if slices.Contains(result, "0") {
+			zeroIndex := slices.Index(result, "0")
+			fmt.Println(zeroIndex)
+			result = slices.Delete(result, zeroIndex, zeroIndex+1)
+		}
 		context.JSON(http.StatusOK, result)
 	}
 

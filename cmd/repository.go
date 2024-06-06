@@ -69,7 +69,7 @@ func FilterBooks(
 			Where("LOWER(author) SIMILAR TO ?", author).
 			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ? OR LOWER(category) SIMILAR TO ?", search, search, search).
 			Where("LOWER(in_stock_text) SIMILAR TO ?", "%"+stockText+"%").
-			Where("year_publish >= ?", yearPublished)
+			Where("CAST(year_publish AS text) SIMILAR TO ?", "%"+yearPublished+"%")
 	}
 }
 
