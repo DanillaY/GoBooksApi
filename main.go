@@ -18,6 +18,12 @@ func main() {
 	if err != nil {
 		fmt.Println("Error while connecting to database")
 	}
+
 	repo := server.Repository{Db: db, Config: config}
+
+	err = repo.PrepareDatabase()
+	if err != nil {
+		fmt.Println("Error while preparing the database")
+	}
 	repo.InitAPIRoutes()
 }

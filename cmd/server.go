@@ -1,11 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"math"
 	"net/http"
 	"net/mail"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -41,30 +39,24 @@ func (d *Repository) InitAPIRoutes() {
 
 func (d *Repository) GetBooks(context *gin.Context) {
 
-	category := strings.ToLower(context.DefaultQuery("category", "%"))
-	categoryRawSql := AddRegexToQuery(category, ",", strings.Contains(category, ","))
+	category := context.DefaultQuery("category", "")
+	author := context.DefaultQuery("author", "")
 
-	author := strings.ToLower(context.DefaultQuery("author", "%"))
-	authorRawSql := strings.ToLower(AddRegexToQuery(author, ",", strings.Contains(author, ",")))
-
-	vendor := strings.ToLower(context.DefaultQuery("vendor", "%"))
-	yearPublished := context.DefaultQuery("year", "%")
+	vendor := context.DefaultQuery("vendor", "")
+	yearPublished, _ := strconv.Atoi(context.DefaultQuery("year", "0"))
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
-	search := strings.ToLower(context.DefaultQuery("search", "%"))
-	stockText := strings.ToLower(context.DefaultQuery("stockText", "%"))
+	search := strings.ToLower(context.DefaultQuery("search", ""))
+	stockText := context.DefaultQuery("stockText", "")
 	sort := context.DefaultQuery("sortOrder", "")
 	sortField := context.DefaultQuery("sortField", "")
 	if sortField != "" {
 		sortField += " " + sort + ","
 	}
-	fmt.Println(sortField)
 
-	search = AddRegexToQuery(search, " ", search != "%")
-
-	minPrice := context.DefaultQuery("minPrice", "50")
-	maxPrice := context.DefaultQuery("maxPrice", "100000")
+	minPrice, _ := strconv.Atoi(context.DefaultQuery("minPrice", "50"))
+	maxPrice, _ := strconv.Atoi(context.DefaultQuery("maxPrice", "100000"))
 
 	limitInt, errLim := strconv.Atoi(limit)
 	pageNumberInt, errPageNum := strconv.Atoi(pageNumber)
@@ -75,8 +67,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	books := &[]models.Book{}
 
 	if db := d.Db.Scopes(FilterBooks(maxPrice,
-		minPrice, categoryRawSql,
-		search, authorRawSql,
+		minPrice, category,
+		search, author,
 		vendor, yearPublished, stockText)).Order("id").
 		Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
@@ -86,8 +78,8 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
 	if db := d.Db.Scopes(FilterBooks(maxPrice,
-		minPrice, categoryRawSql,
-		search, authorRawSql,
+		minPrice, category,
+		search, author,
 		vendor, yearPublished, stockText)).Order(sortField + "id").
 		Offset((pageNumberInt - 1) * limitInt).
 		Limit(limitInt).
@@ -101,8 +93,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 			LastPage:    int(lastpage),
 		}
 
-		result := ApiAnswer{Data: books, Pagination: pagination}
-		context.JSON(http.StatusOK, &result)
+		context.JSON(http.StatusOK, gin.H{"Pagination": pagination, "Data": books})
 	}
 }
 
@@ -121,7 +112,7 @@ func (d *Repository) GetBookByID(context *gin.Context) {
 func (d *Repository) GetMinMaxPrice(context *gin.Context) {
 	min := 0
 	max := 0
-	errMin := d.Db.Table("books").Select("MIN(current_price)").Find(&min).Error
+	errMin := d.Db.Table("books").Select("MIN(current_price)").Where("current_price <> 0").Find(&min).Error
 	errMax := d.Db.Table("books").Select("MAX(current_price)").Find(&max).Error
 
 	mapResult := make(map[string]int)
@@ -138,16 +129,11 @@ func (d *Repository) GetMinMaxPrice(context *gin.Context) {
 func (d *Repository) GetProperties(context *gin.Context) {
 	property := strings.ToLower(context.DefaultQuery("property", "author"))
 	var result []string
-	err := d.Db.Model(&models.Book{}).Distinct(property).Order(property+" DESC").Pluck(property, &result).Error
+	err := d.Db.Model(&models.Book{}).Distinct(property).Order(property+" DESC").Where(property+" <> 0").Pluck(property, &result).Error
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
 	} else {
-		if slices.Contains(result, "0") {
-			zeroIndex := slices.Index(result, "0")
-			fmt.Println(zeroIndex)
-			result = slices.Delete(result, zeroIndex, zeroIndex+1)
-		}
 		context.JSON(http.StatusOK, result)
 	}
 

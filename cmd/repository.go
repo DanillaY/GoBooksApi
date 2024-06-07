@@ -4,21 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/DanillaY/GoScrapper/cmd/models"
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-type Config struct {
-	HOST     string
-	DB_PORT  string
-	API_PORT string
-	PASSWORD string
-	USER     string
-	DB       string
-	SSLMODE  string
-}
 
 type Repository struct {
 	Db     *gorm.DB
@@ -30,10 +19,6 @@ type Pagination struct {
 	PerPage     int
 	CurrentPage int
 	LastPage    int
-}
-type ApiAnswer struct {
-	Pagination *Pagination    `json:"pagination"`
-	Data       *[]models.Book `json:"data"`
 }
 
 func NewPostgresConnection(c *repository.Config) (db *gorm.DB, e error) {
@@ -51,42 +36,59 @@ func NewPostgresConnection(c *repository.Config) (db *gorm.DB, e error) {
 	return db, nil
 }
 
+func (r *Repository) PrepareDatabase() (e error) {
+	createRankColumn := "alter table books ADD COLUMN IF NOT EXISTS search tsvector; "
+	updateExistingBooks := "update books set search = setweight(to_tsvector('simple',title), 'A') || ' ' || setweight(to_tsvector('simple',author), 'B') || ' ' || setweight(to_tsvector('simple',category), 'C'):: tsvector;"
+
+	createFunc := "CREATE OR REPLACE FUNCTION books_trigger() RETURNS trigger AS $$ begin new.search := setweight(to_tsvector('simple',coalesce(new.title,'')), 'A') || ' ' || setweight(to_tsvector('simple',coalesce(new.author,'')), 'B') || ' ' || setweight(to_tsvector('simple',coalesce(new.category,'')), 'C'):: tsvector; return new; end $$ LANGUAGE plpgsql;"
+	createTrigger := "CREATE OR REPLACE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON books FOR EACH ROW EXECUTE FUNCTION books_trigger(); "
+	createBookTitleIndex := "CREATE INDEX IF NOT EXISTS books_title ON books USING GIN(to_tsvector('simple', title)); "
+	createBookAuthorIndex := "CREATE INDEX IF NOT EXISTS books_author ON books USING GIN(to_tsvector('simple', author)); "
+	createBookCategoryIndex := "CREATE INDEX IF NOT EXISTS books_category ON books USING GIN(to_tsvector('simple', category)); "
+	createBookVendorIndex := "CREATE INDEX IF NOT EXISTS books_vendor ON books USING GIN(to_tsvector('simple', vendor)); "
+	createBookStockIndex := "CREATE INDEX IF NOT EXISTS books_stock ON books USING GIN(to_tsvector('simple', in_stock_text)); "
+
+	err := r.Db.Exec(createBookTitleIndex + createBookAuthorIndex +
+		createBookCategoryIndex + createBookVendorIndex +
+		createBookStockIndex + updateExistingBooks +
+		createRankColumn + createFunc + createTrigger).Error
+	return err
+}
+
 func FilterBooks(
-	maxPrice string,
-	minPrice string,
+	maxPrice int,
+	minPrice int,
 	category string,
 	search string,
 	author string,
 	vendor string,
-	yearPublished string,
+	yearPublished int,
 	stockText string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		return db.
-			Where("current_price >= ?", minPrice).
-			Where("current_price <= ?", maxPrice).
-			Where("LOWER(category) SIMILAR TO ?", category).
-			Where("LOWER(vendor) SIMILAR TO ?", "%"+vendor+"%").
-			Where("LOWER(author) SIMILAR TO ?", author).
-			Where("LOWER(title) SIMILAR TO ? OR LOWER(author) SIMILAR TO ? OR LOWER(category) SIMILAR TO ?", search, search, search).
-			Where("LOWER(in_stock_text) SIMILAR TO ?", "%"+stockText+"%").
-			Where("CAST(year_publish AS text) SIMILAR TO ?", "%"+yearPublished+"%")
+
+		db = db.Where("current_price >= ?", minPrice).Where("current_price <= ?", maxPrice)
+
+		if search != "" {
+			search = strings.ReplaceAll(search, " ", " OR ")
+			ts := "ts_rank(search, websearch_to_tsquery('simple', '" + search + "' )) + ts_rank(search, websearch_to_tsquery('russian', '" + search + "' )) as rank"
+			db = db.Table("books").Select("*", ts).
+				Where("search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?)", search, category, author).
+				Order("rank DESC")
+		}
+
+		db = applyFilter("category", category, db)
+		db = applyFilter("vendor", vendor, db)
+		db = applyFilter("author", author, db)
+		db = applyFilter("in_stock_text", stockText, db)
+		db = applyFilter("year_publish", yearPublished, db)
+
+		return db
 	}
 }
 
-func AddRegexToQuery(query string, separator string, entryCheck bool) string {
-	result := ""
-	if entryCheck {
-		queryWithReg := strings.Split(query, separator)
-		for i := 0; i < len(queryWithReg); i++ {
-			if i == len(queryWithReg)-1 {
-				result += "%" + queryWithReg[i] + "%"
-			} else {
-				result += "%" + queryWithReg[i] + "%|"
-			}
-		}
-
-	} else {
-		result = "%" + query + "%"
+func applyFilter[T comparable](field string, value T, db *gorm.DB) *gorm.DB {
+	if value != *new(T) {
+		db = db.Where(field+" = ?", value)
 	}
-	return result
+	return db
 }
