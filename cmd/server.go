@@ -41,7 +41,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	category := context.DefaultQuery("category", "")
 	author := context.DefaultQuery("author", "")
-	//bookInfoType := context.DefaultQuery("bookInfoType", "partial")
+	bookInfoType := context.DefaultQuery("bookInfoType", "partial")
 
 	vendor := context.DefaultQuery("vendor", "")
 	yearPublished, _ := strconv.Atoi(context.DefaultQuery("year", "0"))
@@ -70,7 +70,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 	db := d.Db.Scopes(FilterBooks(maxPrice,
 		minPrice, category,
 		search, author,
-		vendor, yearPublished, stockText)).Order(sortField + "id").
+		vendor, yearPublished, stockText, bookInfoType)).Order(sortField + "id").
 		Find(&books)
 
 	total := len(*books)

@@ -62,17 +62,22 @@ func FilterBooks(
 	author string,
 	vendor string,
 	yearPublished int,
-	stockText string) func(db *gorm.DB) *gorm.DB {
+	stockText string,
+	bookInfoType string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 
 		db = db.Where("current_price >= ?", minPrice).Where("current_price <= ?", maxPrice)
-		//if bookInfoType == "full"{
-		//	db.Select("id","")
-		//}
+		selectTables := []string{"*"}
+
+		if bookInfoType == "partial" {
+			selectTables = []string{"id", "title", "current_price", "old_price", "img_path", "page_book_path", "vendor", "age_restriction"}
+			db.Select(selectTables)
+		}
 		if search != "" {
 			search = strings.ReplaceAll(search, " ", " OR ")
 			ts := "ts_rank(search, websearch_to_tsquery('simple', '" + search + "' )) + ts_rank(search, websearch_to_tsquery('russian', '" + search + "' )) as rank"
-			db = db.Table("books").Select("*", ts).
+			selectTables = append(selectTables, ts)
+			db = db.Table("books").Select(selectTables).
 				Where("search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?)", search, category, author).
 				Order("rank DESC")
 		}
