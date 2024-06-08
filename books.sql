@@ -5,7 +5,7 @@
 -- Dumped from database version 15.3
 -- Dumped by pg_dump version 15.3
 
--- Started on 2024-06-05 15:34:05
+-- Started on 2024-06-08 16:35:45
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22,10 +22,10 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
-CREATE TABLE public.book_users (
-    user_id bigint NOT NULL,
-    book_id bigint NOT NULL
-);
+--
+-- TOC entry 215 (class 1259 OID 87207)
+-- Name: books; Type: TABLE; Schema: public; Owner: postgres
+--
 
 CREATE TABLE public.books (
     id bigint NOT NULL,
@@ -49,8 +49,17 @@ CREATE TABLE public.books (
     format text,
     weight text,
     in_stock_text text,
-    book_about text
+    book_about text,
+    search tsvector
 );
+
+
+ALTER TABLE public.books OWNER TO postgres;
+
+--
+-- TOC entry 214 (class 1259 OID 87206)
+-- Name: books_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
 
 CREATE SEQUENCE public.books_id_seq
     START WITH 1
@@ -59,40 +68,87 @@ CREATE SEQUENCE public.books_id_seq
     NO MAXVALUE
     CACHE 1;
 
+
+ALTER TABLE public.books_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 3336 (class 0 OID 0)
+-- Dependencies: 214
+-- Name: books_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
 ALTER SEQUENCE public.books_id_seq OWNED BY public.books.id;
 
 
-
-CREATE TABLE public.users (
-    id bigint NOT NULL,
-    email text
-);
-
-CREATE SEQUENCE public.users_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-ALTER SEQUENCE public.users_id_seq OWNED BY public.users.id;
+--
+-- TOC entry 3180 (class 2604 OID 87210)
+-- Name: books id; Type: DEFAULT; Schema: public; Owner: postgres
+--
 
 ALTER TABLE ONLY public.books ALTER COLUMN id SET DEFAULT nextval('public.books_id_seq'::regclass);
 
-ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_id_seq'::regclass);
 
-
-ALTER TABLE ONLY public.book_users
-    ADD CONSTRAINT book_users_pkey PRIMARY KEY (user_id, book_id);
+--
+-- TOC entry 3184 (class 2606 OID 87214)
+-- Name: books books_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
 
 ALTER TABLE ONLY public.books
     ADD CONSTRAINT books_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY public.book_users
-    ADD CONSTRAINT fk_book_users_book FOREIGN KEY (book_id) REFERENCES public.books(id);
+CREATE OR REPLACE FUNCTION books_trigger() RETURNS trigger AS $$ begin new.search := setweight(to_tsvector('simple',coalesce(new.title,'')), 'A') || ' ' || setweight(to_tsvector('simple',coalesce(new.author,'')), 'B') || ' ' || setweight(to_tsvector('simple',coalesce(new.category,'')), 'C'):: tsvector; return new; end $$ LANGUAGE plpgsql;
+--
+-- TOC entry 3181 (class 1259 OID 87409)
+-- Name: books_author; Type: INDEX; Schema: public; Owner: postgres
+--
 
-ALTER TABLE ONLY public.book_users
-    ADD CONSTRAINT fk_book_users_user FOREIGN KEY (user_id) REFERENCES public.users(id);
+CREATE INDEX books_author ON public.books USING gin (to_tsvector('simple'::regconfig, author));
+
+
+--
+-- TOC entry 3182 (class 1259 OID 87410)
+-- Name: books_category; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX books_category ON public.books USING gin (to_tsvector('simple'::regconfig, category));
+
+
+--
+-- TOC entry 3185 (class 1259 OID 87412)
+-- Name: books_stock; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX books_stock ON public.books USING gin (to_tsvector('simple'::regconfig, in_stock_text));
+
+
+--
+-- TOC entry 3186 (class 1259 OID 87408)
+-- Name: books_title; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX books_title ON public.books USING gin (to_tsvector('simple'::regconfig, title));
+
+
+--
+-- TOC entry 3187 (class 1259 OID 87411)
+-- Name: books_vendor; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX books_vendor ON public.books USING gin (to_tsvector('simple'::regconfig, vendor));
+
+
+--
+-- TOC entry 3188 (class 2620 OID 87414)
+-- Name: books tsvectorupdate; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER tsvectorupdate BEFORE INSERT OR UPDATE ON public.books FOR EACH ROW EXECUTE FUNCTION public.books_trigger();
+
+
+-- Completed on 2024-06-08 16:35:45
+
+--
+-- PostgreSQL database dump complete
+--
+

@@ -41,6 +41,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	category := context.DefaultQuery("category", "")
 	author := context.DefaultQuery("author", "")
+	//bookInfoType := context.DefaultQuery("bookInfoType", "partial")
 
 	vendor := context.DefaultQuery("vendor", "")
 	yearPublished, _ := strconv.Atoi(context.DefaultQuery("year", "0"))

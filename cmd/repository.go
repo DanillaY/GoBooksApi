@@ -37,7 +37,6 @@ func NewPostgresConnection(c *repository.Config) (db *gorm.DB, e error) {
 }
 
 func (r *Repository) PrepareDatabase() (e error) {
-	createRankColumn := "alter table books ADD COLUMN IF NOT EXISTS search tsvector; "
 	updateExistingBooks := "update books set search = setweight(to_tsvector('simple',title), 'A') || ' ' || setweight(to_tsvector('simple',author), 'B') || ' ' || setweight(to_tsvector('simple',category), 'C'):: tsvector;"
 
 	createFunc := "CREATE OR REPLACE FUNCTION books_trigger() RETURNS trigger AS $$ begin new.search := setweight(to_tsvector('simple',coalesce(new.title,'')), 'A') || ' ' || setweight(to_tsvector('simple',coalesce(new.author,'')), 'B') || ' ' || setweight(to_tsvector('simple',coalesce(new.category,'')), 'C'):: tsvector; return new; end $$ LANGUAGE plpgsql;"
@@ -51,7 +50,7 @@ func (r *Repository) PrepareDatabase() (e error) {
 	err := r.Db.Exec(createBookTitleIndex + createBookAuthorIndex +
 		createBookCategoryIndex + createBookVendorIndex +
 		createBookStockIndex + updateExistingBooks +
-		createRankColumn + createFunc + createTrigger).Error
+		createFunc + createTrigger).Error
 	return err
 }
 
@@ -67,7 +66,9 @@ func FilterBooks(
 	return func(db *gorm.DB) *gorm.DB {
 
 		db = db.Where("current_price >= ?", minPrice).Where("current_price <= ?", maxPrice)
-
+		//if bookInfoType == "full"{
+		//	db.Select("id","")
+		//}
 		if search != "" {
 			search = strings.ReplaceAll(search, " ", " OR ")
 			ts := "ts_rank(search, websearch_to_tsquery('simple', '" + search + "' )) + ts_rank(search, websearch_to_tsquery('russian', '" + search + "' )) as rank"

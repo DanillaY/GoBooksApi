@@ -11,6 +11,7 @@ services:
     image: postgres:latest
     volumes:
       - books_db:/var/lib/postgresql/data
+      - ./books.sql:/docker-entrypoint-initdb.d/create_database.sql
     env_file:
       - "dbDocker.env"
     ports:

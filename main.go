@@ -23,7 +23,7 @@ func main() {
 
 	err = repo.PrepareDatabase()
 	if err != nil {
-		fmt.Println("Error while preparing the database")
+		fmt.Println("Error while preparing the database: " + err.Error())
 	}
 	repo.InitAPIRoutes()
 }
