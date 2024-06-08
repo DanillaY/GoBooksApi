@@ -66,24 +66,16 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	books := &[]models.Book{}
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice,
+	db := d.Db.Scopes(FilterBooks(maxPrice,
 		minPrice, category,
 		search, author,
-		vendor, yearPublished, stockText)).Order("id").
-		Find(&books); db.Error != nil {
-		context.JSON(http.StatusBadRequest, db.Error)
-	}
+		vendor, yearPublished, stockText)).Order(sortField + "id").
+		Find(&books)
 
 	total := len(*books)
 	lastpage := math.Ceil(float64(len(*books)) / float64(limitInt))
 
-	if db := d.Db.Scopes(FilterBooks(maxPrice,
-		minPrice, category,
-		search, author,
-		vendor, yearPublished, stockText)).Order(sortField + "id").
-		Offset((pageNumberInt - 1) * limitInt).
-		Limit(limitInt).
-		Find(&books); db.Error != nil {
+	if db.Offset((pageNumberInt - 1) * limitInt).Limit(limitInt).Find(&books); db.Error != nil {
 		context.JSON(http.StatusBadRequest, db.Error)
 	} else {
 		pagination := &Pagination{
