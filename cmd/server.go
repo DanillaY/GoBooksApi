@@ -129,7 +129,13 @@ func (d *Repository) GetMinMaxPrice(context *gin.Context) {
 func (d *Repository) GetProperties(context *gin.Context) {
 	property := strings.ToLower(context.DefaultQuery("property", "author"))
 	var result []string
-	err := d.Db.Model(&models.Book{}).Distinct(property).Order(property+" DESC").Where(property+" <> 0").Pluck(property, &result).Error
+	var err error
+
+	if property == "year_publish" || property == "current_price" || property == "old_price" {
+		err = d.Db.Model(&models.Book{}).Distinct(property).Order(property+" DESC").Where(property+" <> 0").Pluck(property, &result).Error
+	} else {
+		err = d.Db.Model(&models.Book{}).Distinct(property).Order(property+" ASC").Where(property+" <> ''").Pluck(property, &result).Error
+	}
 
 	if err != nil {
 		context.JSON(http.StatusBadRequest, err.Error())
