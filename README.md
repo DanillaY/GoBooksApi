@@ -1,8 +1,6 @@
-![alt text](./Md/logo.png 'text')
+![alt text](./Md/logo.png 'Cool logo :>')
 
-----
-
-# GoBooksApi
+---
 
 ## Содержание
 
