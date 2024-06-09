@@ -1,6 +1,9 @@
-# GoBooksApi
+![alt text](./Md/logo.png 'text')
 
 ----
+
+# GoBooksApi
+
 ## Содержание
 
 ### Что такое GoBooksApi?
