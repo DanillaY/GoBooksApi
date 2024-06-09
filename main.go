@@ -21,9 +21,11 @@ func main() {
 
 	repo := server.Repository{Db: db, Config: config}
 
-	err = repo.PrepareDatabase()
-	if err != nil {
-		fmt.Println("Error while preparing the database: " + err.Error())
-	}
+	/*
+		err = repo.PrepareDatabase()
+		if err != nil {
+			fmt.Println("Error while preparing the database: " + err.Error())
+		}
+	*/
 	repo.InitAPIRoutes()
 }

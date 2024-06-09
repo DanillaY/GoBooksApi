@@ -48,7 +48,7 @@ func (d *Repository) GetBooks(context *gin.Context) {
 
 	pageNumber := context.DefaultQuery("pageNum", "1")
 	limit := context.DefaultQuery("limit", "30")
-	search := strings.ToLower(context.DefaultQuery("search", ""))
+	search := strings.TrimSpace(strings.ToLower(context.DefaultQuery("search", "")))
 	stockText := context.DefaultQuery("stockText", "")
 	sort := context.DefaultQuery("sortOrder", "")
 	sortField := context.DefaultQuery("sortField", "")

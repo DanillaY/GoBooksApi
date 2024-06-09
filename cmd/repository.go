@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gorm.io/driver/postgres"
@@ -73,8 +72,8 @@ func FilterBooks(
 			selectTables = []string{"id", "title", "current_price", "old_price", "img_path", "page_book_path", "vendor", "age_restriction"}
 			db.Select(selectTables)
 		}
+
 		if search != "" {
-			search = strings.ReplaceAll(search, " ", " OR ")
 			ts := "ts_rank(search, websearch_to_tsquery('simple', '" + search + "' )) + ts_rank(search, websearch_to_tsquery('russian', '" + search + "' )) as rank"
 			selectTables = append(selectTables, ts)
 			db = db.Table("books").Select(selectTables).
