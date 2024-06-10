@@ -93,7 +93,7 @@ func FilterBooks(
 
 func applyFilter[T comparable](field string, value T, db *gorm.DB) *gorm.DB {
 	if value != *new(T) {
-		db = db.Where(field+" = ?", value)
+		db = db.Where(field+" IN (?)", value)
 	}
 	return db
 }
