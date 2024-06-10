@@ -182,16 +182,20 @@ func (d *Repository) AddNewBookSubscriber(context *gin.Context) {
 	bookId := context.DefaultQuery("bookId", "0")
 	email, errMail := mail.ParseAddress(context.DefaultQuery("userEmail", "@"))
 
+	var errBook error
+	var errUser error
 	book := models.Book{}
-	user := models.User{Email: email.Address}
+	user := models.User{}
 
-	errBook := d.Db.Find(&book, "ID = ?", bookId).Error
-	errUser := d.Db.Where(models.User{Email: email.Address}).FirstOrCreate(&user).Error
+	if errMail == nil {
+		book := models.Book{}
+		user := models.User{Email: email.Address}
+		errBook = d.Db.Find(&book, "ID = ?", bookId).Error
+		errUser = d.Db.Where(models.User{Email: email.Address}).FirstOrCreate(&user).Error
+	}
 
-	if errBook != nil || bookId == "0" || errMail != nil {
-		context.JSON(http.StatusBadRequest, "Error while getting values")
-	} else if errUser != nil {
-		context.JSON(http.StatusInternalServerError, "Could not create user")
+	if errBook != nil || bookId == "0" || errUser != nil || errMail != nil {
+		context.JSON(http.StatusBadRequest, "Server error")
 	} else if book.Vendor == "Book24" || book.Vendor == "Читай город" || book.Vendor == "Лабиринт" {
 		d.Db.Model(&book).Association("User").Append(&user)
 		context.JSON(http.StatusOK, "User subscription was successfully complete")
