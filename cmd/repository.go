@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gorm.io/driver/postgres"
@@ -85,15 +86,18 @@ func FilterBooks(
 		db = applyFilter("vendor", vendor, db)
 		db = applyFilter("author", author, db)
 		db = applyFilter("in_stock_text", stockText, db)
-		db = applyFilter("year_publish", yearPublished, db)
+
+		if yearPublished != 0 {
+			db.Where("year_publish = ?", yearPublished)
+		}
 
 		return db
 	}
 }
 
-func applyFilter[T comparable](field string, value T, db *gorm.DB) *gorm.DB {
-	if value != *new(T) {
-		db = db.Where(field+" IN (?)", value)
+func applyFilter(field string, value string, db *gorm.DB) *gorm.DB {
+	if value != "" {
+		db = db.Where(field+" IN (?)", strings.Split(value, ","))
 	}
 	return db
 }
