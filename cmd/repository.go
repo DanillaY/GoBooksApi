@@ -98,3 +98,10 @@ func applyFilter(field string, value string, db *gorm.DB) *gorm.DB {
 	}
 	return db
 }
+
+func AppendToSearchIfNotEmpty(field string, filter []string) []string {
+	if field != "" {
+		filter = append(filter, "search @@ websearch_to_tsquery('simple', '"+field+"')")
+	}
+	return filter
+}
