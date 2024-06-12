@@ -57,12 +57,9 @@ func (r *Repository) PrepareDatabase() (e error) {
 func FilterBooks(
 	maxPrice int,
 	minPrice int,
-	category string,
-	search string,
-	author string,
-	vendor string,
-	yearPublished int,
-	stockText string,
+	category string, search string,
+	author string, vendor string,
+	yearPublished int, stockText string,
 	bookInfoType string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 
@@ -70,7 +67,7 @@ func FilterBooks(
 		selectTables := []string{"*"}
 
 		if bookInfoType == "partial" {
-			selectTables = []string{"id", "title", "current_price", "old_price", "img_path", "page_book_path", "vendor", "age_restriction"}
+			selectTables = []string{"id", "title", "current_price", "old_price", "author", "category", "img_path", "page_book_path", "vendor", "age_restriction"}
 			db.Select(selectTables)
 		}
 

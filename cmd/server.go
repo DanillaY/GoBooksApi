@@ -32,6 +32,7 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.GET("/getProperties", d.GetProperties)
 	booksApi.GET("/getMinMaxPrice", d.GetMinMaxPrice)
 	booksApi.GET("/getBooksByEmail", d.GetBooksByEmail)
+	booksApi.GET("/getSameBookInDifferentStores", d.GetSameBookInDifferentStores)
 	booksApi.DELETE("/deleteBookSubscriber", d.DeleteBookSubscriber)
 	booksApi.POST("/addNewBookSubscriber", d.AddNewBookSubscriber)
 	booksApi.Run(":" + d.Config.API_PORT)
@@ -87,6 +88,24 @@ func (d *Repository) GetBooks(context *gin.Context) {
 		}
 
 		context.JSON(http.StatusOK, gin.H{"Pagination": pagination, "Data": books})
+	}
+}
+
+func (d *Repository) GetSameBookInDifferentStores(context *gin.Context) {
+	search := context.DefaultQuery("search", "")
+	category := context.DefaultQuery("category", "")
+	author := context.DefaultQuery("author", "")
+
+	books := []models.Book{}
+	ts := "ts_rank(search, websearch_to_tsquery('simple', '" + search + " " + category + " " + author + "' )) + ts_rank(search, websearch_to_tsquery('russian', '" + search + " " + category + " " + author + "' )) as rank"
+	dbErr := d.Db.Table("books").Select("*", ts).
+		Where("search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?) or search @@ websearch_to_tsquery('simple', ?)", search, category, author).
+		Order("rank DESC").Scan(&books).Error
+
+	if dbErr != nil {
+		context.JSON(http.StatusBadRequest, dbErr.Error())
+	} else {
+		context.JSON(http.StatusOK, gin.H{"books": &books})
 	}
 }
 
@@ -188,8 +207,7 @@ func (d *Repository) AddNewBookSubscriber(context *gin.Context) {
 	user := models.User{}
 
 	if errMail == nil {
-		book := models.Book{}
-		user := models.User{Email: email.Address}
+		user = models.User{Email: email.Address}
 		errBook = d.Db.Find(&book, "ID = ?", bookId).Error
 		errUser = d.Db.Where(models.User{Email: email.Address}).FirstOrCreate(&user).Error
 	}
