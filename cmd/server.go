@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"math"
 	"net/http"
 	"net/mail"
@@ -19,7 +20,7 @@ func (d *Repository) InitAPIRoutes() {
 	booksApi.Use(gin.Logger())
 	booksApi.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET"},
+		AllowMethods:     []string{"GET", "POST", "DELETE"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization", "accept", "Cache-Control", "X-Requested-With"},
 		AllowCredentials: true,
 		MaxAge:           24 * time.Hour,
@@ -187,10 +188,14 @@ func (d *Repository) DeleteBookSubscriber(context *gin.Context) {
 	errBook := d.Db.Find(&book, "ID = ?", bookId).Error
 	errUser := d.Db.Find(&user, "email = ?", email).Error
 
+	fmt.Println(d.Db.Model(&book).Association("User").Count())
+	fmt.Println(book.ID)
+	fmt.Println(user.Email)
+
 	if errBook != nil || errUser != nil || errMail != nil {
 		context.JSON(http.StatusBadRequest, "Server error")
 
-	} else if (book.ID == 0 || user.Email == "") || d.Db.Model(&book).Association("User").Count() == 0 {
+	} else if (book.ID == 0 || email.Address == "") || d.Db.Model(&book).Association("User").Count() == 0 {
 		context.JSON(http.StatusBadRequest, "No such user or book")
 
 	} else if book.Vendor == "Book24" || book.Vendor == "Читай город" || book.Vendor == "Лабиринт" {

@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/DanillaY/GoScrapper/cmd/repository"
 	"gorm.io/driver/postgres"
@@ -79,10 +78,10 @@ func FilterBooks(
 				Order("rank DESC")
 		}
 
-		db = applyFilter("category", category, db)
-		db = applyFilter("vendor", vendor, db)
-		db = applyFilter("author", author, db)
-		db = applyFilter("in_stock_text", stockText, db)
+		db = ApplyFilter("category", category, db)
+		db = ApplyFilter("vendor", vendor, db)
+		db = ApplyFilter("author", author, db)
+		db = ApplyFilter("in_stock_text", stockText, db)
 
 		if yearPublished != 0 {
 			db.Where("year_publish = ?", yearPublished)
@@ -90,18 +89,4 @@ func FilterBooks(
 
 		return db
 	}
-}
-
-func applyFilter(field string, value string, db *gorm.DB) *gorm.DB {
-	if value != "" {
-		db = db.Where(field+" IN (?)", strings.Split(value, ","))
-	}
-	return db
-}
-
-func AppendToSearchIfNotEmpty(field string, filter []string) []string {
-	if field != "" {
-		filter = append(filter, "search @@ websearch_to_tsquery('simple', '"+field+"')")
-	}
-	return filter
 }
